@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#075740">
+<title>USTAAD AI — Apprendre le Coran</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#173a2e;background:#f3f7f4}
+*{box-sizing:border-box}body{margin:0}header{background:#075740;color:white;padding:24px 16px}header>div,main{max-width:1040px;margin:auto}
+h1{margin:0;font-size:27px}header p{margin:6px 0 0}main{padding:15px}
+.panel,.ayah{background:white;border:1px solid #dfe9e1;border-radius:15px;padding:17px;margin:12px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:10px}
+label{font-weight:600;display:block;margin:8px 0}input,select,button{font:inherit;padding:10px;border-radius:9px;border:1px solid #bbd2c5}
+input,select{width:100%;background:white}button{color:#075740;background:white;cursor:pointer}button:focus-visible{outline:3px solid #c59b34}
+button.primary{background:#075740;color:white}button:disabled{opacity:.5}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.arabic{font-family:"Noto Naskh Arabic",serif;font-size:30px;line-height:2.1;text-align:right;direction:rtl}
+.muted{color:#587264}.small{font-size:13px}.tag{display:inline-block;border-radius:20px;background:#e2f0e7;padding:5px 10px}
+.ayah.current{border:2px solid #c59b34}#status{min-height:25px}
+audio{width:100%;margin-top:10px}footer{color:#587264;font-size:13px;padding:18px 0}
+@media(max-width:550px){.arabic{font-size:26px}h1{font-size:23px}}
+</style>
+</head>
+<body>
+<header><div><h1>USTAAD AI <span lang="ar">أستاذ القرآن</span></h1><p>Lire, écouter, réciter et mémoriser — 114 sourates</p></div></header>
+<main>
+<div class="panel">
+<p><strong>Version Web publique.</strong> Cette version nécessite Internet pour charger les textes depuis une API coranique et l'audio depuis EveryAyah. Aucune correction automatique de récitation n'est activée.</p>
+<div class="grid">
+<div><label for="surah">Sourate</label><select id="surah" aria-label="Sourate"><option>Chargement…</option></select></div>
+<div><label for="verse">Verset</label><select id="verse" aria-label="Verset"></select></div>
+<div><label for="reciter">Récitateur</label><select id="reciter"><option value="Alafasy_128kbps">Mishary Alafasy</option><option value="Husary_128kbps">Mahmoud Al-Husary</option></select></div>
+</div>
+<div class="row" style="margin-top:14px">
+<button id="prev">← Verset précédent</button><button id="next">Verset suivant →</button>
+<button id="play" class="primary">▶ Écouter</button><button id="mark">✓ Répétition effectuée</button>
+</div>
+<audio controls id="audio" preload="none"></audio>
+<p id="status" role="status" aria-live="polite" class="muted">Initialisation…</p>
+</div>
+<div class="panel">
+<div class="row"><strong>📈 Ma progression</strong><span id="progress" class="tag">0 répétition</span><button id="export">Exporter mon suivi</button></div>
+<p class="small muted">La progression est stockée uniquement dans ce navigateur sur cet appareil.</p>
+</div>
+<section id="verses" aria-label="Texte coranique"></section>
+<footer>USTAAD AI — Version Web de découverte. Vérifiez indépendamment les textes et les droits des sources avant redistribution. Pas de reconnaissance vocale ni d'évaluation du tajwîd.</footer>
+</main>
+<script>
+'use strict';
+const $=id=>document.getElementById(id),surahEl=$('surah'),verseEl=$('verse'),audio=$('audio');
+let surahs=[],verses=[],surah=1,ayah=1;
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const key=(s,a)=>'ustaad:repeat:'+s+':'+a;
+const number=(s,a)=>Number(localStorage.getItem(key(s,a))||0);
+function status(message){$('status').textContent=message}
+async function json(url){const r=await fetch(url);if(!r.ok)throw Error('Service distant indisponible ('+r.status+').');return r.json()}
+function source(){return 'https://everyayah.com/data/'+encodeURIComponent($('reciter').value)+'/'+String(surah).padStart(3,'0')+String(ayah).padStart(3,'0')+'.mp3'}
+function selected(){const el=document.querySelector('.ayah.current');if(el)el.scrollIntoView({block:'nearest'})}
+function choose(a,scroll=false){if(!verses.length)return;ayah=Math.max(1,Math.min(verses.length,Number(a)||1));verseEl.value=String(ayah);audio.pause();audio.src=source();for(const el of document.querySelectorAll('.ayah'))el.classList.toggle('current',Number(el.dataset.a)===ayah);localStorage.setItem('ustaad:last',JSON.stringify({surah,ayah}));if(scroll)selected();status('Sourate '+surah+', verset '+ayah)}
+function render(){verseEl.innerHTML=verses.map(v=>'<option value="'+v.numberInSurah+'">Verset '+v.numberInSurah+'</option>').join('');$('verses').innerHTML=verses.map(v=>'<article class="ayah" data-a="'+v.numberInSurah+'" id="ayah-'+v.numberInSurah+'"><span class="tag">'+surah+':'+v.numberInSurah+'</span><span class="muted small"> · <span id="n-'+v.numberInSurah+'">'+number(surah,v.numberInSurah)+'</span> répétitions</span><div class="arabic" lang="ar" dir="rtl">'+esc(v.text)+'</div><button data-select="'+v.numberInSurah+'">Choisir ce verset</button></article>').join('')}
+async function load(s,a=1){surah=Number(s);surahEl.value=String(surah);status('Chargement de la sourate…');const r=await json('https://api.alquran.cloud/v1/surah/'+surah+'/ar.alafasy');if(!r.data||!Array.isArray(r.data.ayahs))throw Error('Texte introuvable');verses=r.data.ayahs;render();choose(a);refresh()}
+function refresh(){let n=0;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('ustaad:repeat:'))n+=Number(localStorage.getItem(k))||0}$('progress').textContent=n+' répétition'+(n===1?'':'s')}
+$('prev').onclick=()=>{if(ayah>1)choose(ayah-1,true);else if(surah>1)load(surah-1,9999).catch(e=>status(e.message))};
+$('next').onclick=()=>{if(ayah<verses.length)choose(ayah+1,true);else if(surah<114)load(surah+1,1).catch(e=>status(e.message))};
+$('play').onclick=()=>audio.play().catch(e=>status('Audio indisponible : '+e.message));
+$('mark').onclick=()=>{const n=number(surah,ayah)+1;localStorage.setItem(key(surah,ayah),String(n));const el=$('n-'+ayah);if(el)el.textContent=n;refresh();status('Répétition enregistrée localement')};
+$('export').onclick=()=>{const result=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i),m=k&&k.match(/^ustaad:repeat:(\d+):(\d+)$/);if(m)result.push({sourate:Number(m[1]),verset:Number(m[2]),repetitions:Number(localStorage.getItem(k))})}const url=URL.createObjectURL(new Blob([JSON.stringify({export_date:new Date().toISOString(),progression:result},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='ustaad-progression.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+$('verses').onclick=e=>{const b=e.target.closest('button[data-select]');if(b)choose(b.dataset.select)};
+verseEl.onchange=()=>choose(verseEl.value,true);surahEl.onchange=()=>load(surahEl.value).catch(e=>status(e.message));$('reciter').onchange=()=>choose(ayah);
+audio.onerror=()=>status('Fichier audio indisponible. Vérifiez la connexion et le récitateur.');
+async function init(){try{const r=await json('https://api.alquran.cloud/v1/meta');const list=r.data.surahs;if(!Array.isArray(list)||list.length!==114)throw Error('Liste de sourates invalide');surahs=list;surahEl.innerHTML=list.map(s=>'<option value="'+s.number+'">'+s.number+'. '+esc(s.englishName)+' — '+esc(s.name)+'</option>').join('');let x={};try{x=JSON.parse(localStorage.getItem('ustaad:last')||'{}')}catch{}await load(x.surah||1,x.ayah||1)}catch(e){status('Impossible de charger le Coran : '+e.message+' — vérifiez votre connexion Internet.')}}
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+name: Validate USTAAD AI Web
+on:
+  push:
+    branches: [main, fix/ustaad-web-v6]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate HTML and embedded JavaScript
+        shell: bash
+        run: |
+          test -s index.html
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          class Scripts(HTMLParser):
+              def __init__(self): super().__init__();self.capture=False;self.scripts=[]
+              def handle_starttag(self,tag,attrs):
+                  if tag=='script' and not dict(attrs).get('src'): self.capture=True
+              def handle_data(self,data):
+                  if self.capture:self.scripts.append(data)
+              def handle_endtag(self,tag):
+                  if tag=='script':self.capture=False
+          doc=Path('index.html').read_text(encoding='utf-8')
+          assert '<html' in doc and 'id="surah"' in doc and 'id="verses"' in doc
+          parsed=Scripts();parsed.feed(doc)
+          assert parsed.scripts,'Missing embedded script'
+          Path('/tmp/ustaad.js').write_text('\n'.join(parsed.scripts),encoding='utf-8')
+          PY
+          node --check /tmp/ustaad.js
