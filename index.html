@@ -32,9 +32,9 @@ audio{width:100%;margin-top:10px}footer{color:#587264;font-size:13px;padding:18p
 </div>
 <div class="row" style="margin-top:14px">
 <button id="prev">← Verset précédent</button><button id="next">Verset suivant →</button>
-<button id="play" class="primary">▶ Écouter</button><button id="mark">✓ Répétition effectuée</button>
+<button id="play" class="primary">▶ Écouter</button><button id="record">🎙 Enregistrer</button><button id="stop" disabled>■ Arrêter</button><button id="save" disabled>⬇ Sauvegarder</button><button id="mark">✓ Répétition effectuée</button>
 </div>
-<audio controls id="audio" preload="none"></audio>
+<audio controls id="audio" preload="none"></audio><audio controls id="recorded" aria-label="Ma récitation" hidden></audio>
 <p id="status" role="status" aria-live="polite" class="muted">Initialisation…</p>
 </div>
 <div class="panel">
@@ -47,7 +47,7 @@ audio{width:100%;margin-top:10px}footer{color:#587264;font-size:13px;padding:18p
 <script>
 'use strict';
 const $=id=>document.getElementById(id),surahEl=$('surah'),verseEl=$('verse'),audio=$('audio');
-let surahs=[],verses=[],surah=1,ayah=1;
+let surahs=[],verses=[],surah=1,ayah=1;let recorder=null,chunks=[],recordedUrl=null;
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const key=(s,a)=>'ustaad:repeat:'+s+':'+a;
 const number=(s,a)=>Number(localStorage.getItem(key(s,a))||0);
@@ -66,6 +66,9 @@ $('mark').onclick=()=>{const n=number(surah,ayah)+1;localStorage.setItem(key(sur
 $('export').onclick=()=>{const result=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i),m=k&&k.match(/^ustaad:repeat:(\d+):(\d+)$/);if(m)result.push({sourate:Number(m[1]),verset:Number(m[2]),repetitions:Number(localStorage.getItem(k))})}const url=URL.createObjectURL(new Blob([JSON.stringify({export_date:new Date().toISOString(),progression:result},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='ustaad-progression.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
 $('verses').onclick=e=>{const b=e.target.closest('button[data-select]');if(b)choose(b.dataset.select)};
 verseEl.onchange=()=>choose(verseEl.value,true);surahEl.onchange=()=>load(surahEl.value).catch(e=>status(e.message));$('reciter').onchange=()=>choose(ayah);
+$('record').onclick=async()=>{try{if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder)throw Error('Microphone indisponible');const stream=await navigator.mediaDevices.getUserMedia({audio:true});chunks=[];recorder=new MediaRecorder(stream);recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};recorder.onstop=()=>{stream.getTracks().forEach(t=>t.stop());if(recordedUrl)URL.revokeObjectURL(recordedUrl);recordedUrl=URL.createObjectURL(new Blob(chunks,{type:recorder.mimeType||'audio/webm'}));$('recorded').src=recordedUrl;$('recorded').hidden=false;$('save').disabled=false;$('record').disabled=false;$('stop').disabled=true;status('Récitation enregistrée')};recorder.start();$('record').disabled=true;$('stop').disabled=false;$('save').disabled=true;status('Enregistrement…')}catch(e){status('Microphone : '+e.message)}};
+$('stop').onclick=()=>{if(recorder?.state==='recording')recorder.stop()};
+$('save').onclick=()=>{if(recordedUrl){const a=document.createElement('a');a.href=recordedUrl;a.download='ustaad-'+surah+'-'+ayah+'.webm';a.click()}};
 audio.onerror=()=>status('Fichier audio indisponible. Vérifiez la connexion et le récitateur.');
 async function init(){try{const r=await json('https://api.alquran.cloud/v1/meta');const list=r.data.surahs;if(!Array.isArray(list)||list.length!==114)throw Error('Liste de sourates invalide');surahs=list;surahEl.innerHTML=list.map(s=>'<option value="'+s.number+'">'+s.number+'. '+esc(s.englishName)+' — '+esc(s.name)+'</option>').join('');let x={};try{x=JSON.parse(localStorage.getItem('ustaad:last')||'{}')}catch{}await load(x.surah||1,x.ayah||1)}catch(e){status('Impossible de charger le Coran : '+e.message+' — vérifiez votre connexion Internet.')}}
 init();
