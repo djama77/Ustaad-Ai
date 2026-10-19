@@ -12,12 +12,12 @@ h1{margin:0;font-size:27px}header p{margin:6px 0 0}main{padding:15px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:10px}
 label{font-weight:600;display:block;margin:8px 0}input,select,button{font:inherit;padding:10px;border-radius:9px;border:1px solid #bbd2c5}
 input,select{width:100%;background:white}button{color:#075740;background:white;cursor:pointer}button:focus-visible{outline:3px solid #c59b34}
-button.primary{background:#075740;color:white}button:disabled{opacity:.5}
+button.primary{background:#075740;color:white}button:disabled{opacity:.5}button{min-height:44px;touch-action:manipulation}select{min-height:48px}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.arabic{font-family:"Noto Naskh Arabic",serif;font-size:30px;line-height:2.1;text-align:right;direction:rtl}
 .muted{color:#587264}.small{font-size:13px}.tag{display:inline-block;border-radius:20px;background:#e2f0e7;padding:5px 10px}
-.ayah.current{border:2px solid #c59b34}#status{min-height:25px}
+.ayah.current{border:2px solid #c59b34;scroll-margin-top:16px}#status{min-height:25px}
 audio{width:100%;margin-top:10px}footer{color:#587264;font-size:13px;padding:18px 0}
-@media(max-width:550px){.arabic{font-size:26px}h1{font-size:23px}}
+@media(max-width:550px){.arabic{font-size:27px}h1{font-size:23px}.panel,.ayah{padding:15px;margin:10px 0}.row>button{flex:1 1 145px}.grid{grid-template-columns:1fr}main{padding:12px}header{padding:20px 16px}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
@@ -32,7 +32,7 @@ audio{width:100%;margin-top:10px}footer{color:#587264;font-size:13px;padding:18p
 </div>
 <div class="row" style="margin-top:14px">
 <button id="prev">← Verset précédent</button><button id="next">Verset suivant →</button>
-<button id="play" class="primary">▶ Écouter</button><button id="record">🎙 Enregistrer</button><button id="stop" disabled>■ Arrêter</button><button id="save" disabled>⬇ Sauvegarder</button><button id="mark">✓ Répétition effectuée</button>
+<button id="play" class="primary" aria-label="Écouter le verset sélectionné">▶ Écouter</button><button id="record" aria-label="Enregistrer ma récitation">🎙 Enregistrer</button><button id="stop" disabled>■ Arrêter</button><button id="save" disabled>⬇ Sauvegarder</button><button id="mark" aria-label="Marquer une répétition du verset">✓ Répétition effectuée</button>
 </div>
 <audio controls id="audio" preload="none"></audio><audio controls id="recorded" aria-label="Ma récitation" hidden></audio>
 <p id="status" role="status" aria-live="polite" class="muted">Initialisation…</p>
