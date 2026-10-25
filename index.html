@@ -75,7 +75,7 @@ $('record').onclick=async()=>{try{if(!navigator.mediaDevices?.getUserMedia||!win
 $('stop').onclick=()=>{if(recorder?.state==='recording')recorder.stop()};
 $('save').onclick=()=>{if(recordedUrl){const a=document.createElement('a');a.href=recordedUrl;const type=recorder?.mimeType||'';a.download='ustaad-'+surah+'-'+ayah+(type.includes('mp4')?'.m4a':type.includes('ogg')?'.ogg':'.webm');a.click()}};
 audio.onerror=()=>status('Fichier audio indisponible. Vérifiez la connexion et le récitateur.');
-async function init(){try{const r=await json('https://api.alquran.cloud/v1/meta');const list=r.data.surahs;if(!Array.isArray(list)||list.length!==114)throw Error('Liste de sourates invalide');surahs=list;surahEl.innerHTML=list.map(s=>'<option value="'+s.number+'">'+s.number+'. '+esc(s.englishName)+' — '+esc(s.name)+'</option>').join('');let x={};try{x=JSON.parse(localStorage.getItem('ustaad:last')||'{}')}catch{}await load(x.surah||1,x.ayah||1)}catch(e){status('Impossible de charger le Coran (API, connexion ou délai de 12 s) : '+e.message+' — vérifiez votre connexion Internet.')}}
+async function init(){try{const r=await json('https://api.alquran.cloud/v1/meta');const list=Array.isArray(r.data?.surahs)?r.data.surahs:r.data?.surahs?.references;if(!Array.isArray(list)||list.length!==114)throw Error('Liste de sourates invalide');surahs=list;surahEl.innerHTML=list.map(s=>'<option value="'+s.number+'">'+s.number+'. '+esc(s.englishName)+' — '+esc(s.name)+'</option>').join('');let x={};try{x=JSON.parse(localStorage.getItem('ustaad:last')||'{}')}catch{}await load(x.surah||1,x.ayah||1)}catch(e){status('Impossible de charger le Coran (API, connexion ou délai de 12 s) : '+e.message+' — vérifiez votre connexion Internet.')}}
 init();
 </script>
 </body>
