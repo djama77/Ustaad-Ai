@@ -1,7 +1,7 @@
 name: Validate USTAAD AI Web
 on:
   push:
-    branches: [main, fix/ustaad-web-v6]
+    branches: [main, fix/ustaad-web-v6, improvement/bookmarks-and-accessibility]
   pull_request:
     branches: [main]
 jobs:
@@ -12,25 +12,38 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate HTML and embedded JavaScript
+      - name: Validate both web interfaces and embedded JavaScript
         shell: bash
         run: |
-          test -s index.html
           python3 - <<'PY'
           from html.parser import HTMLParser
           from pathlib import Path
+
           class Scripts(HTMLParser):
-              def __init__(self): super().__init__();self.capture=False;self.scripts=[]
-              def handle_starttag(self,tag,attrs):
-                  if tag=='script' and not dict(attrs).get('src'): self.capture=True
-              def handle_data(self,data):
-                  if self.capture:self.scripts.append(data)
-              def handle_endtag(self,tag):
-                  if tag=='script':self.capture=False
-          doc=Path('index.html').read_text(encoding='utf-8')
-          assert '<html' in doc and 'id="surah"' in doc and 'id="verses"' in doc
-          parsed=Scripts();parsed.feed(doc)
-          assert parsed.scripts,'Missing embedded script'
-          Path('/tmp/ustaad.js').write_text('\n'.join(parsed.scripts),encoding='utf-8')
+              def __init__(self):
+                  super().__init__()
+                  self.capture = False
+                  self.scripts = []
+              def handle_starttag(self, tag, attrs):
+                  if tag == 'script' and not dict(attrs).get('src'):
+                      self.capture = True
+              def handle_data(self, data):
+                  if self.capture:
+                      self.scripts.append(data)
+              def handle_endtag(self, tag):
+                  if tag == 'script':
+                      self.capture = False
+
+          for filename in ('index.html', 'www/index.html'):
+              path = Path(filename)
+              assert path.is_file() and path.stat().st_size > 0, f'Missing {filename}'
+              doc = path.read_text(encoding='utf-8')
+              assert '<html' in doc and 'id="surah"' in doc and 'id="verses"' in doc, f'Basic interface missing in {filename}'
+              assert 'favoritesView' in doc and 'data-favorite=' in doc, f'Favorites UI missing in {filename}'
+              parsed = Scripts()
+              parsed.feed(doc)
+              assert parsed.scripts, f'Missing embedded JavaScript in {filename}'
+              Path('/tmp/' + filename.replace('/', '_') + '.js').write_text('\n'.join(parsed.scripts), encoding='utf-8')
           PY
-          node --check /tmp/ustaad.js
+          node --check /tmp/index.html.js
+          node --check /tmp/www_index.html.js
