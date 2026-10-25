@@ -43,7 +43,7 @@ jobs:
               parsed = Scripts()
               parsed.feed(doc)
               assert parsed.scripts, f'Missing embedded JavaScript in {filename}'
-              Path('/tmp/' + filename.replace('/', '_') + '.js').write_text('\\n'.join(parsed.scripts), encoding='utf-8')
+              Path('/tmp/' + filename.replace('/', '_') + '.js').write_text('\n'.join(parsed.scripts), encoding='utf-8')
           PY
           node --check /tmp/index.html.js
           node --check /tmp/www_index.html.js
