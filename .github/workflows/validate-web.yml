@@ -1,7 +1,7 @@
 name: Validate USTAAD AI Web
 on:
   push:
-    branches: [main, fix/ustaad-web-v6, improvement/bookmarks-and-accessibility]
+    branches: [main, fix/ustaad-web-v6, improvement/bookmarks-and-accessibility, improvement/audit-reliability]
   pull_request:
     branches: [main]
 jobs:
@@ -34,12 +34,20 @@ jobs:
                   if tag == 'script':
                       self.capture = False
 
-          for filename in ('index.html', 'www/index.html'):
+          files = ('index.html', 'www/index.html')
+          contents = {name: Path(name).read_text(encoding='utf-8') for name in files if Path(name).is_file()}
+          assert len(contents) == 2, 'Both Web interfaces must exist'
+          assert contents['index.html'] == contents['www/index.html'], 'Root and Android Web interfaces must stay identical'
+
+          for filename in files:
               path = Path(filename)
               assert path.is_file() and path.stat().st_size > 0, f'Missing {filename}'
               doc = path.read_text(encoding='utf-8')
               assert '<html' in doc and 'id="surah"' in doc and 'id="verses"' in doc, f'Basic interface missing in {filename}'
               assert 'favoritesView' in doc and 'data-favorite=' in doc, f'Favorites UI missing in {filename}'
+              assert 'ustaad-suivi-complet.json' in doc, f'Complete progress export missing in {filename}'
+              assert 'derniere_lecture' in doc and 'favoris' in doc, f'Export must include reading position and favorites in {filename}'
+              assert 'init();' in doc, f'Application initialization missing in {filename}'
               parsed = Scripts()
               parsed.feed(doc)
               assert parsed.scripts, f'Missing embedded JavaScript in {filename}'
