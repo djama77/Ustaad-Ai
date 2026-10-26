@@ -1,7 +1,7 @@
 name: Validate USTAAD AI Web
 on:
   push:
-    branches: [main, fix/ustaad-web-v6, improvement/bookmarks-and-accessibility, improvement/audit-reliability]
+    branches: [main, fix/ustaad-web-v6, improvement/bookmarks-and-accessibility, improvement/audit-reliability, feature/offline-mode]
   pull_request:
     branches: [main]
 jobs:
@@ -35,6 +35,8 @@ jobs:
                       self.capture = False
 
           files = ('index.html', 'www/index.html')
+          assert Path('sw.js').is_file() and Path('www/sw.js').is_file(), 'Offline service worker must exist for Web and Android'
+          assert Path('sw.js').read_text(encoding='utf-8') == Path('www/sw.js').read_text(encoding='utf-8'), 'Web and Android service workers must match'
           contents = {name: Path(name).read_text(encoding='utf-8') for name in files if Path(name).is_file()}
           assert len(contents) == 2, 'Both Web interfaces must exist'
           assert contents['index.html'] == contents['www/index.html'], 'Root and Android Web interfaces must stay identical'
@@ -48,6 +50,8 @@ jobs:
               assert 'ustaad-suivi-complet.json' in doc, f'Complete progress export missing in {filename}'
               assert 'derniere_lecture' in doc and 'favoris' in doc, f'Export must include reading position and favorites in {filename}'
               assert 'init();' in doc, f'Application initialization missing in {filename}'
+              assert 'ustaad:offline:surah-list' in doc and 'cachedSurah' in doc, f'Offline surah cache missing in {filename}'
+              assert "navigator.serviceWorker.register('./sw.js')" in doc, f'Service worker registration missing in {filename}'
               parsed = Scripts()
               parsed.feed(doc)
               assert parsed.scripts, f'Missing embedded JavaScript in {filename}'
@@ -55,3 +59,5 @@ jobs:
           PY
           node --check /tmp/index.html.js
           node --check /tmp/www_index.html.js
+          node --check sw.js
+          node --check www/sw.js
