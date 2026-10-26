@@ -24,6 +24,8 @@ jobs:
           test -s index.html
           mkdir -p _site
           cp index.html _site/index.html
+          test -s sw.js
+          cp sw.js _site/sw.js
           touch _site/.nojekyll
           test -s _site/index.html
       - name: Configure Pages
